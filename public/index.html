@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Operaciones</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        font-family: sans-serif;
+        background: linear-gradient(to right, rgba(113,206,239,1) 8%, rgba(33,180,226,1) 13%, rgba(38,181,226,1) 16%,
+         rgba(183,222,237,1) 100%);
+      }
+
+      footer{
+        background: linear-gradient(to right, rgba(179,220,237,1) 0%, rgba(41,184,229,1) 50%, rgba(188,224,238,1) 100%);
+        width:100%;
+        height: 50px;
+        bottom:0;
+        position:fixed;
+        text-align: center;
+      }
+      form {
+        margin: 0 auto;
+       align-content: center;
+        border-radius: 10px;
+      border: 1px solid #666666;
+      width: 500px;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <form id="vista">
+        <h1>Operaciones</h1>
+      <p><output id="respuesta"></output></p>
+      <p><input type="numeric" id="numero1" required placeholder="Número 1"></p>
+      <p><input type="numeric" id="numero2" required placeholder="Número 2"></p>
+      <p>
+        <button type="submit">Dividir (Hilos)</button>
+        <button type="button" id="multiplicarHttp">Saludos (Http)</button>
+      </p>
+    </form>
+    <script type="module">
+      /* Crea un worker que cuyo código fuente está en el archivo "wwSaldo.js" y
+       * se ejecuta en un hilo independiente. */
+      const hilo = new Worker("wwSaludo.js");
+ 
+      // Enlaza el evento submit de la forma con la función saludaHilo */
+      vista.addEventListener("submit", dividirHilo);
+ 
+      // Enlaza el evento click de saludarHttp con la función saludaHttp */
+      multiplicarHttp.addEventListener("click", saludoHttp);
+ 
+      // Enlaza el evento message del hilo para que muestre los datos devueltos.
+      hilo.addEventListener("message", evt => muestraRespuesta(evt.data));
+ 
+      /** Muestra un texto en el output con id="respuesta".
+       * @param texto texto que se muestra. */
+      function muestraRespuesta(texto) {
+        respuesta.value = texto;
+      }
+ 
+      /** Envía datos al hilo para que genere un saludo.
+       * @param {Event} evt objeto que describe el evento. */
+      function dividirHilo(evt) {
+        evt.preventDefault();
+        /* Toma los datos capturados en la interfaz gráfica y arma un objeto
+         * con las property nombre1 y nombre2. */
+        const modelo = leeModelo();
+        // Envía los datos al hilo.
+        hilo.postMessage(modelo);
+      }
+ 
+      /** Toma los datos capturados en la interfaz gráfica y arma un objeto
+       * con las property nombre1 y nombre2.
+       * @returns {{nombre1:string, nombre2:string}} los datos capturados. */
+      function leeModelo() {
+        // Lo que está entre llaves es el objeto.
+        return {
+          /* nombre1: indica el nombre de la property
+           * nombre1.value.trim() toma la captura de id="nombre1" y le quita los
+           *        espacios y saltos de línea al inicio y al final. */
+          numero1: numero1.value,
+          numero2: numero2.value
+        };
+      }
+ 
+      /** Envía los datos a la función en Internet. */
+      function saludoHttp() {
+        const modelo = leeModelo();
+        /* La función fetch envía los datos al servidor. El texto que recibe como
+         * parámetro es la url que se invoca. El signo de interrogación "?"
+         * permite pasarle parámetros y encodeURIComponent formatea la
+         * información para que se puede colocar en la URL. El signo "&" separa
+         * los parámetros. En este caso se envían los parámetros "nombre1" y
+         * "nombre2", que llevan los datos del modelo. */
+        fetch("saludo?numero1=" + encodeURIComponent(modelo.numero1)
+          + "&numero2=" + encodeURIComponent(modelo.numero2))
+          /* then recibe una función que se ejecuta cuando la comunicación con
+           * el servidor haya terminado exitosamente. */
+          .then(
+            /** Función que se ejecuta cuando la comunicación con el servidor
+             * haya terminado exitosamente.
+             * @param {Response} respuestaHttp el resultado de la conexión */
+            respuestaHttp => {
+              /* La property ok de la respuesta vale true si la conexión terminó
+               * con éxito. */
+              if (respuestaHttp.ok) {
+                /* En esta parte del if, la conexión terminó con éxito. Hay que
+                 * mostrar el texto del servidor. respuestaHttp.text() devuelve
+                 * una promise con el texto recibido; dicha promise se devuelve
+                 * como resultado de esta función. */
+                return respuestaHttp.text();
+              } else {
+                /* En esta parte del if, la conexión terminó con errores. Se
+                 * Lanza una excepción que será atrapada por la función del
+                 * .catch en la línea 111. respuestaHttp.statusText devuelve
+                 * un texto describiendo el error, que normalmente está en
+                 * inglés. */
+                throw new Error(respuestaHttp.statusText)
+              }
+            })
+          /* La función del .then anterior, devuelve una promise; cuando esta
+           * termina de ejecutarse, el valor que devuelve se le pasa a la
+           * función de este then. */
+          .then(texto => muestraRespuesta(texto))
+          /* Cuando se genere una excepción en cualquier punto de la cadena
+           * de operaciones, se invoca la función que recibe catch. */
+          .catch(e => muestraRespuesta(e.message));
+      }
+    </script>
+  </body>
+  <footer>Copyright &copy; Derechos Reservados 2019 Diego González Sánchez  GRUPO IC 51.</footer>
+</html>
